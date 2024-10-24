@@ -8,6 +8,10 @@ This is a Discord bot that allows users to set reminders. You can set reminders 
 - **Specific date reminders** (e.g., `/Remembrall on 25/10/2024 14:30 "Meeting with client"`)
 - Reminders are stored in a SQLite database (`reminders.db`), and the data is persisted using Docker volumes.
 
+## Add it to your server :
+
+[Click here](https://discord.com/oauth2/authorize?client_id=1298978593870843924&permissions=2147575808&integration_type=0&scope=bot)
+
 ## Prerequisites
 
 - You need a [Discord bot token](https://discord.com/developers/applications). Follow the instructions below to obtain it.
