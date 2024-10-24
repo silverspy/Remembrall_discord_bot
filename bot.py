@@ -2,8 +2,10 @@ import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 import aiosqlite
+import pytz  # For timezone support
 import re
 import asyncio
+import os
 
 # Create the bot
 intents = discord.Intents.default()
@@ -11,6 +13,8 @@ intents.message_content = True  # Make sure the necessary intents are enabled
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
+# Define the Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
 
 # Function to parse a time string like "2d 4h 5m 30s"
 def parse_time_string(time_string):
@@ -27,32 +31,36 @@ def parse_time_string(time_string):
 
     return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
-
 # Function to parse a date string like "DD/MM/YY" or "DD/MM/YYYY" with optional time
 def parse_date_string(date_string):
     try:
         # Try parsing with full date and time (DD/MM/YYYY HH:MM)
-        return datetime.strptime(date_string, "%d/%m/%Y %H:%M")
+        naive_date = datetime.strptime(date_string, "%d/%m/%Y %H:%M")
+        return PARIS_TZ.localize(naive_date)  # Localize to Paris timezone
     except ValueError:
         try:
             # Try parsing with short year and time (DD/MM/YY HH:MM)
-            return datetime.strptime(date_string, "%d/%m/%y %H:%M")
+            naive_date = datetime.strptime(date_string, "%d/%m/%y %H:%M")
+            return PARIS_TZ.localize(naive_date)
         except ValueError:
             try:
                 # Try parsing with full date and no time (DD/MM/YYYY) and set time to 00:00 by default
-                return datetime.strptime(date_string, "%d/%m/%Y")
+                naive_date = datetime.strptime(date_string, "%d/%m/%Y")
+                return PARIS_TZ.localize(naive_date)
             except ValueError:
                 try:
                     # Try parsing with short year and no time (DD/MM/YY) and set time to 00:00 by default
-                    return datetime.strptime(date_string, "%d/%m/%y")
+                    naive_date = datetime.strptime(date_string, "%d/%m/%y")
+                    return PARIS_TZ.localize(naive_date)
                 except ValueError:
                     raise ValueError(
                         "Invalid date format. Use `DD/MM/YY`, `DD/MM/YYYY`, or add time like `DD/MM/YYYY HH:MM` or `DD/MM/YY HH:MM`.")
 
+DB_PATH = "/app/data/reminders.db"
 
 # Create SQLite database for reminders
 async def init_db():
-    async with aiosqlite.connect("reminders.db") as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('''CREATE TABLE IF NOT EXISTS reminders (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER,
@@ -62,19 +70,16 @@ async def init_db():
                             )''')
         await db.commit()
 
-
 @bot.event
 async def on_ready():
     await init_db()
     check_reminders.start()
     print(f"Logged in as {bot.user}")
 
-
 # Function to check if a string is in the format HH:MM (valid time)
 def is_time_format(string):
     time_regex = re.compile(r'^\d{2}:\d{2}$')
     return bool(time_regex.match(string))
-
 
 # Command to set a reminder
 @bot.command(name="Remembrall")
@@ -89,7 +94,11 @@ async def remembrall(ctx, mode: str = None, *, message_input: str = None):
         if mode == "in":
             time_input, message = message_input.split(' ', 1)
             delta = parse_time_string(time_input)
-            reminder_time = datetime.now() + delta
+
+            # Get the current time in Paris timezone
+            now_in_paris = datetime.now(PARIS_TZ)
+            reminder_time = now_in_paris + delta  # Add the timedelta to the current time in Paris
+
 
         elif mode == "on":
             # Split the input into parts
@@ -111,7 +120,7 @@ async def remembrall(ctx, mode: str = None, *, message_input: str = None):
             raise ValueError("Invalid mode. Use `in` for durations or `on` for dates.")
 
         # Save the reminder to the database
-        async with aiosqlite.connect("reminders.db") as db:
+        async with aiosqlite.connect(DB_PATH) as db:
             await db.execute('''INSERT INTO reminders (user_id, channel_id, reminder_time, message) 
                                 VALUES (?, ?, ?, ?)''', (ctx.author.id, ctx.channel.id, reminder_time, message))
             await db.commit()
@@ -123,12 +132,11 @@ async def remembrall(ctx, mode: str = None, *, message_input: str = None):
                        "- `/Remembrall in [time] [message]` where [time] is in the format `Xd Xh Xm Xs` (example: `2d 4h 5m 30s`).\n"
                        "- `/Remembrall on [DD/MM/YY] [message]` or with optional time `DD/MM/YYYY HH:MM` or `DD/MM/YY HH:MM`.")
 
-
 # Function to check reminders periodically and send messages
 @tasks.loop(seconds=60)
 async def check_reminders():
-    now = datetime.now()
-    async with aiosqlite.connect("reminders.db") as db:
+    now = datetime.now(PARIS_TZ)
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
                 "SELECT id, user_id, channel_id, reminder_time, message FROM reminders WHERE reminder_time <= ?",
                 (now,)) as cursor:
@@ -142,6 +150,10 @@ async def check_reminders():
                 await db.execute("DELETE FROM reminders WHERE id = ?", (reminder_id,))
                 await db.commit()
 
+# Get the Discord token from the environment variable
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Run the bot with your token
-bot.run("Your_token")
+if not DISCORD_TOKEN:
+    print("Error: DISCORD_TOKEN environment variable not set.")
+else:
+    bot.run(DISCORD_TOKEN)
