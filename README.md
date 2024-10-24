@@ -10,7 +10,7 @@ This is a Discord bot that allows users to set reminders. You can set reminders 
 
 ## Add it to your server :
 
-[Click here](https://discord.com/oauth2/authorize?client_id=1298978593870843924&permissions=2147575808&integration_type=0&scope=bot)
+[Click here](https://short.silverspy.fr/Remembrall)
 
 ## Prerequisites
 
