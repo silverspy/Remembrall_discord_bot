@@ -1,34 +1,79 @@
-# Remembrall Discord Bot
+# Discord Remembrall Bot
 
-The **Remembrall Discord Bot** is a simple bot that allows users to set reminders using Discord commands. Users can set reminders either by specifying a duration (`/Remembrall in`) or by specifying a particular date and time (`/Remembrall on`). Reminders are stored in a database, and the bot will send a direct message to the user when the reminder is due.
+This is a Discord bot that allows users to set reminders. You can set reminders either relative to the current time (e.g., in 2 days, 4 hours), or at a specific date and time.
 
 ## Features
 
-- **Set reminders by duration**: Use `/Remembrall in` to set reminders after a specific amount of time (e.g., in 2 days, 4 hours).
-- **Set reminders by date and time**: Use `/Remembrall on` to set reminders for a specific date, with an optional time.
-- **Persistent storage**: Reminders are stored in a SQLite database to ensure that they are not lost when the bot is restarted.
+- **Relative time reminders** (e.g., `/Remembrall in 2d 4h 5m 30s "Appointment with dentist"`)
+- **Specific date reminders** (e.g., `/Remembrall on 25/10/2024 14:30 "Meeting with client"`)
+- Reminders are stored in a SQLite database (`reminders.db`), and the data is persisted using Docker volumes.
+
+## Prerequisites
+
+- You need a [Discord bot token](https://discord.com/developers/applications). Follow the instructions below to obtain it.
+- Install [Docker](https://www.docker.com/get-started) and optionally [Docker Compose](https://docs.docker.com/compose/install/).
+
+## Obtaining a Discord Bot Token
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Click on **New Application** and give your application a name.
+3. Under the **Bot** section, click **Add Bot**.
+4. Reveal the **Token** and copy it. This token will be used to run your bot.
+
+> **Important**: Keep your token secure. Never share it publicly. If it's exposed, you can regenerate it from the Developer Portal.
+
+## Docker Installation
+
+1. **Clone this repository**:
+
+   ```bash
+   git clone https://github.com/your-repo/discord-remembrall-bot.git
+   cd discord-remembrall-bot
+   ```
+
+   Make sure to replace `your_discord_bot_token_here` in docker-compose with the actual bot token you obtained from the Discord Developer Portal.
+
+3. **Build and run the bot using Docker Compose**:
+
+   If you have Docker Compose installed, run the following command to build and start the bot:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   This command will:
+   - Build the Docker image for the bot.
+   - Start the bot in a container with the `reminders.db` persisted in the `data` folder.
+
+4. **Check the logs** to make sure the bot is running correctly:
+
+   ```bash
+   docker logs discord-bot
+   ```
+
+5. **Stop the bot**:
+
+   To stop the bot, run the following command:
+
+   ```bash
+   docker-compose down
+   ```
 
 ## Usage
 
-### Commands
+Once the bot is running, you can use the following commands:
 
-1. **/Remembrall in [time] [message]**
-   - Set a reminder after a certain amount of time.
-   - Format for `time`: `Xd Xh Xm Xs` where `X` is a number representing days, hours, minutes, and seconds.
-   - Example:
-     ```
-     /Remembrall in 2d 4h 5m "Book dentist appointment"
-     ```
+- **Set a reminder relative to the current time**:
+  ```
+  /Remembrall in 2d 4h 5m 30s "Appointment with dentist"
+  ```
 
-2. **/Remembrall on [DD/MM/YY] [message]**
-   - Set a reminder on a specific date. You can optionally include the time in `HH:MM` format.
-   - If no time is provided, the bot will default to `00:00`.
-   - Example:
-     ```
-     /Remembrall on 25/10/24 14:50 "Meeting with team"
-     ```
+- **Set a reminder for a specific date and time**:
+  ```
+  /Remembrall on 25/10/2024 14:30 "Meeting with client"
+  ```
 
-   - Example if no time is provided:
-     ```
-     /Remembrall on 25/10/24 "Book dentist appointment"
-     ```
+## Notes
+
+- The bot stores all reminders in `reminders.db`, and this database is persisted using Docker volumes.
+- The bot's time zone is hardcoded to **Europe/Paris**. All reminders will be processed in this time zone. (Need to fix)
